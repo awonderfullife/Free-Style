@@ -54,3 +54,9 @@ def pool_layer(input, pooling):
 		return tf.nn.avg_pool(input, ksize=(1,2,2,1), strides=(1,2,2,1), padding="SAME")
 	else:
 		return tf.nn.max_pool(input, ksize=(1,2,2,1), strides=(1,2,2,1), padding="SAME")
+
+def preprocess(pixels, mean_pixel):
+	return pixels - mean_pixel
+
+def unprocess(pixels, mean_pixel):
+	return pixels + mean_pixel
