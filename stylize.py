@@ -102,7 +102,27 @@ def stylize(
 		for content_layer in CONTENT_LAYERS:
 			content_losses.append(content_layers_weights[content_layer]*content_weight*
 				(2*tf.nn.l2_loss(net[content_layer] - content_features[content_layer]) / content_features[content_layer].size))
-					
+		content_loss += reduce(tf.add, content_losses)  # map and reduce abstract function
+
+		# style loss 
+		style_loss = 0
+		for i in range(len(style)):
+			style_losses = []
+			for style_layer in STYLE_LAYERS:
+				layer = net[style_layer]
+				_, height, width, number = map(lambda i: i.value, layer.get_shape())  # python: lambda para: operation_on_para 
+				size = height*width*number
+				feats = tf.reshape(layer, (-1, number))
+				gram = tf.matmul(tf.transpose(feats), feats)/size
+				style_gram = style_features[i][style_layer]
+				style_losses.append(style_layers_weights[style_layer]*2*tf.nn.l2_loss(gram-style_gram)/style_gram.size)
+			style_loss += style_weight*style_blend_weights[i]*reduce(tf.add, style_losses)
+
+		
+
+
+
+
 
 
 
