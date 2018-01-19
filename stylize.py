@@ -36,5 +36,76 @@ def stylize(
 	
 	content_shape = (1,) + content.shape
 	style_shapes = [(1,) + style.shape for style in styles]  # why needn't ()? Because tuple object is not callable
+	content_features = {}
+	style_features = [{} for item in styles]
 
-	
+	vgg_weights, vgg_mean_pixel = VGG_model.load_net(network)
+
+	layer_weight = 1.0
+	style_layers_weights = {}
+	for style_layer in STYLE_LAYERS:
+		style_layers_weights[style_layer] = layer_weight
+		layer_weight *= style_layer_weight_exp
+
+	# normalization for style layer weights
+	style_layers_weights_sum = 0
+	for style_layer in STYLE_LAYERS:
+		style_layers_weights_sum += style_layers_weights[style_layer]
+	for style_layer in STYLE_LAYERS:
+		style_layers_weights[style_layer] /= style_layers_weights_sum
+
+	# compute content features in feedforward mode
+	# a context manager with it's certain area
+	g = tf.Graph() 
+	with g.as_default(), g.device("/cpu:0"), tf.Session() as sess:
+		image = tf.placeholder('float', shape=content_shape)
+		net = VGG_model.net_preloaded(vgg_weights, image, pooling)
+		content_pre = np.array([VGG_model.preprocess(content, vgg_mean_pixel)])
+		for layer in CONTENT_LAYERS:
+			content_features[layer] = net[layer].eval(feed_dict={image: content_pre})
+
+	# compute style features in feedforward mode
+	for i in xrange(len(styles)):
+		g = tf.Graph()
+		with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
+			image = tf.placeholder('float', shape=style_shapes[i])
+			net = VGG_model.net_preloaded(vgg_weights, image, pooling)
+			style_pre = np.array([VGG_model.preprocess(styles[i], vgg_mean_pixel)])
+			for layer in STYLE_LAYERS:
+				features = net[layer].eval(feed_dict={image: style_pre})
+				features = np.reshape(features, (-1, features.shape[3]))
+				gram = np.matmul(features.T, features)/features.size   # due to mutilayer, we need normalize to make combination become successfull
+				style_features[i][layer] = gram
+
+	initial_content_nosie_coeff = 1.0 - initial_noiseblend
+
+	# make stylized iamge using backpropogation
+	with tf.Graph().as_default():
+		if initial is None:
+			noise = np.random.normal(size=shape, scale=np.std(content)*0.1)
+			initial = tf.random_normal(shape)*0.256
+		else:
+			initial = np.array([VGG_model.preprocess(initial, vgg_mean_pixel)])
+			initial = initial.astype('float32')
+			noise = np.random.normal(size=shape, scale=np.std(content)*0.1)
+			initial = initial*initial_content_nosie_coeff + (tf.random_normal(shape)*0.256)*(1.0-initial_content_nosie_coeff)
+		image = tf.Variable(initial)
+		net = VGG_model.net_preloaded(vgg_weights, image, pooling)
+
+		# content loss
+		content_layers_weights = {}
+		content_layers_weights['relu4_2'] = content_weight_blend
+		content_layers_weights['relu5_2'] = 1.0 - content_weight_blend
+
+		content_loss = 0
+		content_losses = []
+		for content_layer in CONTENT_LAYERS:
+			content_losses.append(content_layers_weights[content_layer]*content_weight*
+				(2*tf.nn.l2_loss(net[content_layer] - content_features[content_layer]) / content_features[content_layer].size))
+					
+
+
+
+
+
+
