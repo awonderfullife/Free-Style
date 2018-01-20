@@ -32,7 +32,7 @@ def net_preloaded(weight, input_image, pooling):
 	for i, name in enumerate(VGG_LAYERS):
 		id_name = name[:4]
 		if id_name=="conv":
-			kernels, bias = weight[i][0][0][0]
+			kernels, bias = weight[i][0][0][0][0]
 			# [height, width, in_channels, out_channels] ==> [width, heright, in_channels, out_channels]
 			kernels = np.transpose(kernels, (1,0,2,3)) 
 			bias = bias.reshape(-1)

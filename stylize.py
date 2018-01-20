@@ -73,7 +73,7 @@ def stylize(
 			style_pre = np.array([VGG_model.preprocess(styles[i], vgg_mean_pixel)])
 			for layer in STYLE_LAYERS:
 				features = net[layer].eval(feed_dict={image: style_pre})
-				features = np.reshape(features, (-1, features.content_shape[3]))
+				features = np.reshape(features, (-1, features.shape[3]))
 				gram = np.matmul(features.T, features)/features.size   # due to mutilayer, we need normalize to make combination become successfull
 				style_features[i][layer] = gram
 
@@ -106,7 +106,7 @@ def stylize(
 
 		# style loss 
 		style_loss = 0
-		for i in range(len(style)):
+		for i in range(len(styles)):
 			style_losses = []
 			for style_layer in STYLE_LAYERS:
 				layer = net[style_layer]
@@ -121,14 +121,14 @@ def stylize(
 		# total variation denoising
 		tv_y_size = _tensor_size(image[:,1:,:,:])
 		tv_x_size = _tensor_size(image[:,:,1:,:])
-		tv_loss = tv_weight * 2 * ((tf.nn.l2_loss(image[:,1:,:,:] - image[:,:content_shape[1]-2,:,:]) / tv_y_size)
+		tv_loss = tv_weight * 2 * ((tf.nn.l2_loss(image[:,1:,:,:] - image[:,:content_shape[1]-1,:,:]) / tv_y_size)
 			+ (tf.nn.l2_loss(image[:,:,1:,:] - image[:,:,:content_shape[2]-1,:]) / tv_x_size))
 
 		# overall loss 
 		loss = content_loss + style_loss + tv_loss
 
 		# optimizer setup
-		train_step = tf.tain.AdaOptimizer(learning_rate, beta1, beta2, epsilon).minimize(loss)
+		train_step = tf.train.AdamOptimizer(learning_rate, beta1, beta2, epsilon).minimize(loss)
 
 		def print_progress():
 			stderr.write('content loss: %g\n' % content_loss.eval())
@@ -145,7 +145,7 @@ def stylize(
 			if (print_iterations and print_iterations != 0):
 				print_progress()
 			for i in xrange(iterations):
-				stderr.write('Iteration %4d/%4d' % (i+1, iterations))
+				stderr.write('Iteration %4d/%4d\n' % (i+1, iterations))
 				train_step.run()
 
 				last_step = (i == iterations-1)
@@ -158,7 +158,7 @@ def stylize(
 						best_loss = this_loss
 						best = image.eval()
 
-					img_out = vgg.unprocess(best.reshape(content_shape[1:]), vgg_mean_pixel)
+					img_out = VGG_model.unprocess(best.reshape(content_shape[1:]), vgg_mean_pixel)
 
 					if preserve_colors and preserve_colors == True:
 						original_image = np.clip(content, 0, 255)  # the value out of [0, 255] will be assign to 0 or 255
@@ -186,7 +186,7 @@ def stylize(
 						img_out = np.array(Image.fromarray(combined_yuv, 'YCbCr').convert('RGB'))		
 
 					yield (
-						(None, if last_step else i),
+						(None if last_step else i),
 						img_out
 						)
 

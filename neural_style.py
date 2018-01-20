@@ -20,7 +20,7 @@ BETA1 = 0.9
 BETA2 = 0.999
 EPSILON = 1e-08
 STYLE_SCALE = 1.0
-ITERATIONS = 1000
+ITERATIONS = 10
 VGG_PATH = 'imagenet-vgg-verydeep-19.mat'
 POOLING = 'avg'
 
@@ -123,7 +123,7 @@ def main():
 		style_images[i] = scipy.misc.imresize(style_images[i], style_scale*target_shape[1]/style_images[i].shape[1])
 
 	style_blend_weights = options.style_blend_weights
-	if style_blend_weights is not None:
+	if style_blend_weights is None:
 		style_blend_weights = [1.0/len(style_images) for _ in style_images]
 	else:
 		total_blend_weight = sum(style_blend_weights)
@@ -183,7 +183,7 @@ def imread(path):
 		img = img[:,:,:3] # delete alpha channel
 	return img 
 
-def imgsave(path, img):
+def imsave(path, img):
 	img = np.clip(img, 0, 255).astype(np.uint8)
 	Image.fromarray(img).save(path, quality=95)
 
