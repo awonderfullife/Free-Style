@@ -179,8 +179,8 @@ def stylize(
 						w, h, _ = original_image.shape 
 						combined_yuv = np.empty((w,h,3), dtype=np.uint8)
 						combined_yuv[..., 0] = styled_grayscale_yuv[..., 0]
-						combined_yuv[..., 1] = original_yuv[..., 1]
-						combined_yuv[..., 2] = original_yuv[..., 2]
+						combined_yuv[..., 1] = original_yuv[..., 1] # list2 = [[1,2], [2,3], [3,4], [4,5]]
+						combined_yuv[..., 2] = original_yuv[..., 2] # list2[..., 1] = [2, 3, 4, 5]
 
 						# step 5: Convert recombined image from YUV back to RGB
 						img_out = np.array(Image.fromarray(combined_yuv, 'YCbCr').convert('RGB'))		
@@ -189,6 +189,10 @@ def stylize(
 						(None, if last_step else i),
 						img_out
 						)
+
+def _tensor_size(tensor):
+	from operator import mul
+	return reduce(mul, (d.value for d in tensor.get_shape()), 1)
 
 def rgb2gray(rgb):
 	return np.dot(rgb[..., 3], [0.299, 0.587, 0.114])  # Dot product of two arrays. For 2-D arrays it is equivalent to matrix multiplication
